@@ -7,6 +7,7 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin') // 单独打包c
 const OptimizeCssAssetsWebpackPlugin =  require('optimize-css-assets-webpack-plugin') //  压缩css
 const glob = require('glob')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
+const HtmlWebpackExternalsPlugin = require('html-webpack-externals-plugin')
 
 
 const SetMap = () => {
@@ -14,7 +15,7 @@ const SetMap = () => {
     const HtmlWebpackPlugins = []
     const entryFiles = glob.sync(path.join(__dirname, './src/*/index.js'))
 
-    console.log('entryFiles', entryFiles)
+    // console.log('entryFiles', entryFiles)
 
     entryFiles.map(item => {
         const pageNameMap =  item.match(/src\/(.*)\/index\.js/)
@@ -24,7 +25,7 @@ const SetMap = () => {
         HtmlWebpackPlugins.push(new HtmlWebpackPlugin({
             template:  path.join(__dirname, `src/${pageName}/index.html`),
             filename:  `${pageName}.html`,
-            chunks: [pageName],
+            chunks: [pageName, 'vendors','commons'],
             inject: true,
             minify: {
                 html5: true,
@@ -49,7 +50,7 @@ module.exports = {
         path: path.join(__dirname,'dist'), //必须绝对目录
         filename: 'js/[name].js'
     },
-    mode: 'development',
+    mode: 'production',
     module: {
         rules: [
             {
@@ -61,29 +62,34 @@ module.exports = {
                 use: [
                     // 'style-loader',
                     MiniCssExtractPlugin.loader,
-                    'css-loader',
+                    'css-loader'
 
                 ]
             },
             {
-                test: /\.less$/, // 匹配.less 结尾的文件 
-                // 按照从右到左的顺序解析
+                test: /.less$/,
                 use: [
                     MiniCssExtractPlugin.loader,
-                    // 'style-loader', // 将css插入header中
-                    'css-loader',   // 解析css
-                    'less-loader', // 将less 转换成css
+                    'css-loader',
+                    'less-loader',
                     // {
                     //     loader: 'postcss-loader',
-                    //     // options: {
-                    //     //     plugins: () => [
-                    //     //         require('autoprefixer')({
-                    //     //             browsers: ['last 2 version', '>1%', 'ios 7']
-                    //     //         })
-                    //     //     ]
-                    //     // }
+                    //     options: {
+                    //         plugins: () => [
+                    //             require('autoprefixer')({
+                    //                 browsers: ['last 2 version', '>1%', 'ios 7']
+                    //             })
+                    //         ]
+                    //     }
+                    // },
+                    // {
+                    //     loader: 'px2rem-loader',
+                    //     options: {
+                    //         remUnit: 75,
+                    //         remPrecision: 8
+                    //     }
                     // }
-                ],
+                ]
             },
             // {
             //     test: /\.(jpg|png|gif|jpeg)$/, // 解析图片资源
@@ -151,8 +157,53 @@ module.exports = {
         //         removeComments: false
         //     }
         // })
-        new CleanWebpackPlugin()
+        new CleanWebpackPlugin(),
+        // new HtmlWebpackExternalsPlugin({
+        //     externals: [
+        //       {
+        //         module: 'react',
+        //         entry: 'http://static.runoob.com/assets/react/react-0.14.7/build/react.min.js',
+        //         global: 'React',
+        //       },
+        //       {
+        //         module: 'react-dom',
+        //         entry: 'http://static.runoob.com/assets/react/react-0.14.7/build/react-dom.min.js',
+        //         global: 'ReactDOM',
+        //       },
+        //     ],
+        //   })
+
     ].concat(HtmlWebpackPlugins),
+    optimization: {
+        splitChunks: {
+         minSize: 0,
+          cacheGroups: {
+            vendors: {
+                test: /(react|react-dom)/,
+                // cacheGroupKey here is `commons` as the key of the cacheGroup
+                name: 'vendors',
+                chunks: 'all'
+              },
+              commons: {
+                name: 'commons',
+                chunks: 'all',
+                minChunks: 2
+              }
+          }
+        }
+    },
+    // optimization: {
+    //     splitChunks: {
+    //       minSize: 0,
+    //       cacheGroups: {
+    //         commons: {
+    //             name: 'commons',
+    //             chunks: 'all',
+    //             minChunks: 2
+    //           }
+    //       }
+    //     }
+    // },
     devServer: {
         contentBase: './dist',
         hot: true
